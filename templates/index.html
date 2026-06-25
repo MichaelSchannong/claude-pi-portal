@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Pi Portal</title>
+<style>
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --border:   #2a2d3a;
+    --accent:   #7c6af7;
+    --accent2:  #4ecca3;
+    --text:     #e2e4ef;
+    --muted:    #6b7090;
+    --danger:   #e05c6b;
+    --success:  #4ecca3;
+    --mono:     'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex; align-items: center; gap: 1rem; height: 56px;
+  }
+  .logo { font-weight: 700; font-size: 1.1rem; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--accent2); }
+  .stats-bar { margin-left: auto; display: flex; gap: 1.2rem; font-size: 0.78rem; color: var(--muted); }
+  .stat { display: flex; align-items: center; gap: 0.3rem; }
+  .stat b { color: var(--text); }
+
+  /* ── Layout ── */
+  .workspace { display: grid; grid-template-columns: 220px 1fr 340px; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-header { padding: 1rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .scripts-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+  .script-item { padding: 0.55rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; transition: background 0.15s; margin-bottom: 2px; }
+  .script-item:hover { background: var(--border); }
+  .script-item.active { background: rgba(124,106,247,0.2); color: var(--accent); }
+  .script-item .run-btn { margin-left: auto; padding: 2px 8px; background: var(--accent2); color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 0.72rem; font-weight: 600; }
+  .script-item .run-btn:hover { opacity: 0.85; }
+
+  /* ── Editor ── */
+  .editor-panel { display: flex; flex-direction: column; overflow: hidden; }
+  .editor-toolbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 1rem; display: flex; align-items: center; gap: 0.6rem; }
+  .editor-toolbar input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.7rem; color: var(--text); font-size: 0.85rem; outline: none; }
+  .editor-toolbar input:focus { border-color: var(--accent); }
+  .btn { padding: 0.35rem 0.85rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-success { background: var(--accent2); color: #000; }
+  .btn-danger  { background: var(--danger); color: #fff; }
+  .btn-ghost   { background: var(--border); color: var(--text); }
+  textarea#editor {
+    flex: 1; background: var(--bg); color: var(--text);
+    font-family: var(--mono); font-size: 0.88rem; line-height: 1.6;
+    border: none; padding: 1rem; resize: none; outline: none;
+    tab-size: 4;
+  }
+  .output-panel { background: #070a0f; border-top: 1px solid var(--border); height: 200px; overflow-y: auto; padding: 0.75rem 1rem; font-family: var(--mono); font-size: 0.8rem; line-height: 1.5; color: #a0ffb8; white-space: pre-wrap; }
+  .output-label { background: var(--surface); border-top: 1px solid var(--border); padding: 0.4rem 1rem; font-size: 0.72rem; color: var(--muted); display: flex; justify-content: space-between; }
+
+  /* ── Claude Chat ── */
+  .chat-panel { background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+  .chat-header { padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .messages { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .msg { padding: 0.65rem 0.9rem; border-radius: 10px; font-size: 0.84rem; line-height: 1.55; max-width: 92%; white-space: pre-wrap; }
+  .msg.user { background: rgba(124,106,247,0.2); border: 1px solid rgba(124,106,247,0.3); align-self: flex-end; }
+  .msg.assistant { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; }
+  .chat-input-row { padding: 0.75rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; }
+  .chat-input-row textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.8rem; color: var(--text); font-size: 0.84rem; resize: none; outline: none; height: 60px; font-family: inherit; }
+  .chat-input-row textarea:focus { border-color: var(--accent); }
+  .send-btn { background: var(--accent); border: none; border-radius: 8px; color: #fff; padding: 0 1rem; cursor: pointer; font-size: 1.1rem; }
+  .send-btn:hover { opacity: 0.85; }
+
+  /* ── New script template ── */
+  .new-script-hint { font-size: 0.72rem; color: var(--muted); }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Claude<span>Pi</span> Portal</div>
+  <div class="stats-bar">
+    <div class="stat">🖥 CPU <b id="cpu">–</b>%</div>
+    <div class="stat">💾 RAM <b id="ram">–</b>%</div>
+    <div class="stat">💿 Disk <b id="disk">–</b>/<b id="dtot">–</b> GB</div>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- ── Scripts sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      Scripts
+      <button class="btn btn-primary" onclick="newScript()" style="padding:2px 10px;font-size:0.72rem">+ Ny</button>
+    </div>
+    <div class="scripts-list" id="scriptsList"></div>
+  </aside>
+
+  <!-- ── Editor + Output ── -->
+  <section class="editor-panel">
+    <div class="editor-toolbar">
+      <input id="scriptName" type="text" placeholder="mit_script.py">
+      <button class="btn btn-ghost" onclick="loadSelectedScript()">📂 Åbn</button>
+      <button class="btn btn-primary" onclick="saveScript()">💾 Gem</button>
+      <button class="btn btn-success" onclick="runScript()">▶ Kør</button>
+      <button class="btn btn-danger" onclick="deleteScript()">🗑</button>
+    </div>
+    <textarea id="editor" spellcheck="false" placeholder="# Skriv dit Python-script her
+# Eksempel:
+import anthropic, os
+
+client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+msg = client.messages.create(
+    model='claude-sonnet-4-6',
+    max_tokens=1024,
+    messages=[{'role':'user','content':'Hvad er 2+2?'}]
+)
+print(msg.content[0].text)
+"></textarea>
+    <div class="output-label">
+      <span>Output</span>
+      <button onclick="clearOutput()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.72rem">Ryd</button>
+    </div>
+    <div class="output-panel" id="output">Klar. Vælg et script og tryk ▶ Kør.</div>
+  </section>
+
+  <!-- ── Claude Chat ── -->
+  <aside class="chat-panel">
+    <div class="chat-header"><div class="dot"></div> Claude AI Chat</div>
+    <div class="messages" id="messages">
+      <div class="msg assistant">Hej! Jeg er din Claude-assistent. Spørg mig om Python, scripts eller opgaver jeg skal løse.</div>
+    </div>
+    <div class="chat-input-row">
+      <textarea id="chatInput" placeholder="Skriv besked..." onkeydown="handleChatKey(event)"></textarea>
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────────────
+let chatHistory = [];
+let activeScript = null;
+
+// ── Stats polling ────────────────────────────────────────────────────────────
+async function refreshStats() {
+  const s = await fetch("/api/stats").then(r=>r.json()).catch(()=>({}));
+  document.getElementById("cpu").textContent  = s.cpu  ?? "–";
+  document.getElementById("ram").textContent  = s.ram  ?? "–";
+  document.getElementById("disk").textContent = s.disk_used_gb  ?? "–";
+  document.getElementById("dtot").textContent = s.disk_total_gb ?? "–";
+}
+refreshStats();
+setInterval(refreshStats, 10000);
+
+// ── Scripts ──────────────────────────────────────────────────────────────────
+async function refreshScripts() {
+  const {scripts} = await fetch("/api/scripts").then(r=>r.json());
+  const el = document.getElementById("scriptsList");
+  el.innerHTML = scripts.map(s => `
+    <div class="script-item ${s===activeScript?'active':''}" onclick="selectScript('${s}')">
+      📄 ${s}
+      <button class="run-btn" onclick="event.stopPropagation();runScriptByName('${s}')">▶</button>
+    </div>`).join("");
+}
+refreshScripts();
+
+function selectScript(name) {
+  activeScript = name;
+  document.getElementById("scriptName").value = name;
+  loadSelectedScript();
+  refreshScripts();
+}
+
+async function loadSelectedScript() {
+  const name = document.getElementById("scriptName").value.trim();
+  if (!name) return;
+  const d = await fetch(`/api/scripts/load/${name}`).then(r=>r.json());
+  if (d.content !== undefined) document.getElementById("editor").value = d.content;
+}
+
+async function saveScript() {
+  const name    = document.getElementById("scriptName").value.trim();
+  const content = document.getElementById("editor").value;
+  if (!name) return alert("Angiv et filnavn.");
+  await fetch("/api/scripts/save", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name,content}) });
+  activeScript = name.endsWith(".py") ? name : name+".py";
+  refreshScripts();
+  appendOutput(`💾 Gemt: ${activeScript}\n`);
+}
+
+async function deleteScript() {
+  const name = document.getElementById("scriptName").value.trim();
+  if (!name || !confirm(`Slet ${name}?`)) return;
+  await fetch(`/api/scripts/delete/${name}`, {method:"DELETE"});
+  document.getElementById("editor").value = "";
+  activeScript = null;
+  refreshScripts();
+}
+
+function newScript() {
+  const name = prompt("Filnavn (uden .py):");
+  if (!name) return;
+  document.getElementById("scriptName").value = name + ".py";
+  document.getElementById("editor").value = `# ${name}.py\n\n`;
+}
+
+// ── Run script ───────────────────────────────────────────────────────────────
+async function runScriptByName(name) {
+  const out = document.getElementById("output");
+  out.textContent = "";
+  appendOutput(`▶ Kører: ${name}\n${"─".repeat(40)}\n`);
+  const resp = await fetch(`/api/run/${name}`);
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    appendOutput(decoder.decode(value));
+  }
+}
+
+async function runScript() {
+  await saveScript();
+  await runScriptByName(activeScript || document.getElementById("scriptName").value.trim());
+}
+
+function appendOutput(text) {
+  const out = document.getElementById("output");
+  out.textContent += text;
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearOutput() { document.getElementById("output").textContent = ""; }
+
+// ── Claude Chat ───────────────────────────────────────────────────────────────
+function handleChatKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+async function sendMessage() {
+  const input = document.getElementById("chatInput");
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = "";
+
+  chatHistory.push({role:"user", content: text});
+  addMessage("user", text);
+
+  const aiDiv = addMessage("assistant", "…");
+
+  const resp = await fetch("/api/claude", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      messages: chatHistory,
+      system: "Du er en Python- og scripting-ekspert der kører på en Raspberry Pi. Vær præcis og kortfattet. Svar på dansk medmindre andet er ønsket."
+    })
+  });
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let full = "";
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    full += dec.decode(value);
+    aiDiv.textContent = full;
+    document.getElementById("messages").scrollTop = 9999;
+  }
+  chatHistory.push({role:"assistant", content: full});
+}
+
+function addMessage(role, text) {
+  const wrap = document.getElementById("messages");
+  const div  = document.createElement("div");
+  div.className = `msg ${role}`;
+  div.textContent = text;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div;
+}
+</script>
+</body>
+</html>
